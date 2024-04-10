@@ -1,0 +1,112 @@
+--Função de agregação, usando SUM
+
+SELECT 
+	c.code
+	,c.nome
+	,SUM(d.salevalue)as total
+FROM
+	tbcostumer C
+JOIN tbsale V ON (C.code= V.costumer)
+JOIN tbsaledetail d ON(V.code= d.sale)
+GROUP BY
+	c.code
+	,c.nome
+ORDER BY 1;
+
+--Função AVG
+SELECT 
+	c.Nome
+	,SUM(d.salevalue) as totalsalevalue
+	,SUM(d.quantity*p.salevalue) as salevalue_NO_discount
+	,SUM(d.quantity*p.salevalue) -SUM(d.salevalue) as total_discount  
+FROM 
+	tbcostumer c
+JOIN tbsale V ON (C.code=V.costumer)
+JOIN tbsaledetail d ON (v.code=d.sale)
+JOIN tbproduct p ON(d.product=p.code)
+GROUP BY 
+	C.Nome
+ORDER BY 2,1
+GO
+--USANDO AVG
+SELECT
+	p.description
+	,p.salevalue
+	,AVG(d.salevalue) as avgsale
+FROM
+	tbcostumer C
+JOIN tbsale V ON (C.code=V.costumer)
+JOIN tbsaledetail d ON (v.code=d.sale)
+JOIN tbproduct p ON(d.product=p.code)
+GROUP BY 
+	p.description
+	,p.salevalue
+ORDER BY 1
+GO
+
+--USANDO CLÁUSULA HAVING
+
+SELECT 
+	c.Nome
+	,SUM(d.salevalue) as totalsalevalue
+	 
+FROM 
+	tbcostumer c
+JOIN tbsale V ON (C.code=V.costumer)
+JOIN tbsaledetail d ON (v.code=d.sale)
+GROUP BY 
+	C.Nome
+HAVING SUM (d.salevalue)<5000;
+
+--CRIAÇÃO DAS VIEWS
+
+CREATE VIEW vwactiveproducts
+	as
+select 
+	code
+	,description
+	,salevalue
+	,active
+from
+	tbproduct
+where
+	active=1;
+
+select*from vwactiveproducts
+
+--CRIANDO GATILHOS (TRIGGERS) EM NOVA TABELA
+
+Create table tbproducthistory(
+	code int not null,
+	description varchar (150)null,
+	salevalue numeric (18,2) null,
+	active bit null,
+	dtupdade datetime,
+	updatetype varchar (100) 
+);
+--Consultando a tabela
+select*from tbproducthistory
+go
+--Descrevendo a estrutura da tabela
+sp_columns tbproducthistory
+
+--Criando o trigger
+
+CREATE trigger UpdateProducts ON tbproduct
+FOR UPDATE AS
+BEGIN 
+
+SET NOCOUNT ON;
+	INSERT tbproducthistory(code,description,salevalue,active,dtupdade,updatetype)
+	SELECT code,description,salevalue,active,GETDATE(), 'UPDATE OLD' FROM deleted;
+
+	INSERT tbproducthistory(code,description, salevalue, active, dtupdade, updatetype)
+	SELECT code, description, salevalue, active, GETDATE(),'UPDATE NEW' FROM inserted
+END;
+
+UPDATE tbproduct
+SET description='3DS MAX-MODELAGEM, RENDER, EFEITOS 1ªEDIÇÃO'
+WHERE code=1;
+
+select * from tbproducthistory;
+select * from tbproduct;
